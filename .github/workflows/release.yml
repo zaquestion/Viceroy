@@ -11,10 +11,14 @@ jobs:
       matrix:
         rust-toolchain: [stable]
         os: [ubuntu-20.04, macos-14, windows-2022]
-        arch: [amd64, arm64]
+        arch: [amd64, arm64, amd64-musl]
         exclude:
           - os: windows-2022
             arch: arm64
+          - os: windows-2022
+            arch: amd64-musl
+          - os: macos-14
+            arch: amd64-musl
         include:
           - os: ubuntu-20.04
             name: linux
@@ -30,6 +34,9 @@ jobs:
             rust_arch: aarch64
           - arch: amd64
             rust_arch: x86_64
+          - arch: amd64-musl
+            rust_arch: x86_64
+            rust_abi: unknown-linux-musl
 
     runs-on: ${{ matrix.os }}
     outputs:
@@ -45,12 +52,18 @@ jobs:
         shell: bash
 
       - name: Install C cross-compilation toolchain
-        if: ${{ matrix.name == 'linux' && matrix.arch != 'amd64' }}
+        if: ${{ matrix.name == 'linux' && matrix.rust_arch != 'x86_64' }}
         run: |
           sudo apt-get update
           sudo apt install -f -y gcc-${{ matrix.rust_arch }}-linux-gnu
           echo CC=${{ matrix.rust_arch }}-linux-gnu-gcc >> $GITHUB_ENV
           echo RUSTFLAGS='-C linker=${{ matrix.rust_arch }}-linux-gnu-gcc' >> $GITHUB_ENV
+
+      - name: Install musl-gcc
+        if: ${{ matrix.name == 'linux' && matrix.arch == 'amd64-musl' }}
+        run: |
+          sudo apt-get update
+          sudo apt install -f -y musl-dev
 
       - name: Extract tag name
         uses: olegtarasov/get-tag@v2.1.2
